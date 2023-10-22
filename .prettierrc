@@ -3,17 +3,5 @@
 	"tabWidth": 4,
 	"useTabs": true,
 	"semi": false,
-	"singleQuote": true,
-	"plugins": [
-		"prettier-plugin-solidity"
-	],
-	"overrides": [
-		{
-			"files": "*.sol",
-			"options": {
-				"compiler": "0.8.18",
-				"parser": "solidity-parse"
-			}
-		}
-	]
+	"singleQuote": true
 }

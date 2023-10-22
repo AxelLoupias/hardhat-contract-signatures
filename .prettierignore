@@ -1,7 +1,3 @@
-artifacts/
-cache/
 node_modules/
-typechain-types/
-coverage/
 package.json
 *.md
