@@ -16,7 +16,7 @@
 		"lint": "npx eslint . --ext js,ts;",
 		"prettier:fix": "prettier --write \"**/*.{ts,js}\"",
 		"lint:fix": "npx eslint . --ext js,ts --fix",
-		"fix": "npm run prettier:fix; npm run lint:fix; npm run solhint:fix"
+		"fix": "npm run prettier:fix; npm run lint:fix"
 	},
 	"keywords": [],
 	"author": "",
