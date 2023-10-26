@@ -1,4 +1,4 @@
-import { scope, task } from 'hardhat/config'
+import { scope } from 'hardhat/config'
 import '@nomicfoundation/hardhat-ethers'
 import Table, { type CellOptions } from 'cli-table3'
 import {
@@ -200,17 +200,6 @@ function getErrorsData(
 	return eventsData
 }
 
-function getStructsData(
-	contractInterface: Interface,
-	contractName: string,
-	showColumns: ErrorFormatColumns[]
-) {
-	const eventsData: CellOptions[][] = []
-
-	console.log(contractInterface.fragments)
-
-
-}
 async function getContractsConfig(hre: HardhatRuntimeEnvironment) {
 	// Obtain config
 	const excludeContractsConfig = hre.config.functionSign.exclude
@@ -225,6 +214,6 @@ async function getContractsConfig(hre: HardhatRuntimeEnvironment) {
 		contracts: excludeContracts(contractsData, excludeContractsConfig),
 		functionsColumns,
 		eventsColumns,
-		errorsColumns
+		errorsColumns,
 	}
 }
