@@ -1,9 +1,10 @@
-import { scope } from 'hardhat/config'
+import { scope, task } from 'hardhat/config'
 import '@nomicfoundation/hardhat-ethers'
 import Table, { type CellOptions } from 'cli-table3'
 import {
 	type EventsFormatColumns,
 	type FunctionFormatColumns,
+	type ErrorFormatColumns,
 } from '../types/types'
 import {
 	getContractsData,
@@ -13,10 +14,7 @@ import {
 } from '../utils'
 import { type Interface } from 'ethers'
 import { type HardhatRuntimeEnvironment } from 'hardhat/types'
-// TODO: save data in file
 
-// Add errors
-// Try structs
 const signature = scope('signature', 'test')
 
 signature
@@ -71,7 +69,33 @@ signature
 			data.push(...eventsData)
 		}
 
-		drawTable(['eventsName', ...getNamesFormatColumns(eventsColumns)], data)
+		drawTable(['eventName', ...getNamesFormatColumns(eventsColumns)], data)
+	})
+
+signature
+	.task('errors', 'Get the errors of the differents methods of a SC')
+	.setAction(async (args, hre) => {
+		const { contracts, errorsColumns } = await getContractsConfig(hre)
+		const data = []
+		for (const contractData of contracts) {
+			if (!(await isContract(hre, contractData.name))) {
+				continue
+			}
+			const contractInterface = (
+				await hre.ethers.getContractFactory(contractData.name)
+			).interface
+			const eventsData = getErrorsData(
+				contractInterface,
+				contractData.name,
+				errorsColumns
+			)
+			if (eventsData.length === 0) {
+				continue
+			}
+			data.push(...eventsData)
+		}
+
+		drawTable(['errorName', ...getNamesFormatColumns(errorsColumns)], data)
 	})
 
 function drawTable(headColumns: string[], contractData: CellOptions[][]) {
@@ -146,11 +170,53 @@ function getEventsData(
 	return eventsData
 }
 
+function getErrorsData(
+	contractInterface: Interface,
+	contractName: string,
+	showColumns: ErrorFormatColumns[]
+) {
+	const eventsData: CellOptions[][] = []
+
+	const totalEvents = contractInterface.fragments.filter(
+		(fragment) => fragment.type === 'error'
+	).length
+
+	contractInterface.forEachError((fnt, index) => {
+		const actions: Record<ErrorFormatColumns, () => CellOptions> = {
+			selector: () => ({ content: fnt.selector }),
+			'sign:full': () => ({ content: fnt.format('full') }),
+			'sign:json': () => ({ content: fnt.format('json') }),
+			'sign:minimal': () => ({ content: fnt.format('minimal') }),
+			'sign:sighash': () => ({ content: fnt.format('sighash') }),
+		}
+		const row: CellOptions[] =
+			index === 0 ? [{ content: contractName, rowSpan: totalEvents }] : []
+
+		row.push({ content: fnt.name })
+		row.push(...showColumns.map((column) => actions[column]()))
+
+		eventsData.push(row)
+	})
+	return eventsData
+}
+
+function getStructsData(
+	contractInterface: Interface,
+	contractName: string,
+	showColumns: ErrorFormatColumns[]
+) {
+	const eventsData: CellOptions[][] = []
+
+	console.log(contractInterface.fragments)
+
+
+}
 async function getContractsConfig(hre: HardhatRuntimeEnvironment) {
 	// Obtain config
 	const excludeContractsConfig = hre.config.functionSign.exclude
 	const functionsColumns = hre.config.functionSign.functionsColumns
 	const eventsColumns = hre.config.functionSign.eventsColumns
+	const errorsColumns = hre.config.functionSign.errorsColumns
 
 	// Get contracts or throw error if not compiled
 	const contractsData = await getContractsData(hre)
@@ -159,5 +225,27 @@ async function getContractsConfig(hre: HardhatRuntimeEnvironment) {
 		contracts: excludeContracts(contractsData, excludeContractsConfig),
 		functionsColumns,
 		eventsColumns,
+		errorsColumns
 	}
 }
+
+task('a').setAction(async (args, hre) => {
+	const { contracts, errorsColumns } = await getContractsConfig(hre)
+	// const data = []
+	for (const contractData of contracts) {
+		if (!(await isContract(hre, contractData.name))) {
+			continue
+		}
+		const contractInterface = (
+			await hre.ethers.getContractFactory(contractData.name)
+		).interface
+		getStructsData(
+			contractInterface,
+			contractData.name,
+			errorsColumns
+		)
+
+	}
+
+
+})

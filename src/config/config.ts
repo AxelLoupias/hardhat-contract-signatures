@@ -7,6 +7,7 @@ extendConfig(
 		const defaultValues: FunctionSign = {
 			functionsColumns: ['selector', 'sign:minimal'],
 			eventsColumns: ['topicHash'],
+			errorsColumns: ['selector', 'sign:minimal'],
 			exclude: [],
 		}
 
