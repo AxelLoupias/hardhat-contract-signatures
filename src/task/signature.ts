@@ -228,24 +228,3 @@ async function getContractsConfig(hre: HardhatRuntimeEnvironment) {
 		errorsColumns
 	}
 }
-
-task('a').setAction(async (args, hre) => {
-	const { contracts, errorsColumns } = await getContractsConfig(hre)
-	// const data = []
-	for (const contractData of contracts) {
-		if (!(await isContract(hre, contractData.name))) {
-			continue
-		}
-		const contractInterface = (
-			await hre.ethers.getContractFactory(contractData.name)
-		).interface
-		getStructsData(
-			contractInterface,
-			contractData.name,
-			errorsColumns
-		)
-
-	}
-
-
-})
