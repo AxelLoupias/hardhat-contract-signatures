@@ -1,19 +1,19 @@
 import { extendConfig } from 'hardhat/config'
 import { type HardhatConfig, type HardhatUserConfig } from 'hardhat/types'
-import { type FunctionSign } from '../types/type-extension'
+import { type ContractSignature } from '../types/type-extension'
 
 extendConfig(
 	(config: HardhatConfig, userConfig: Readonly<HardhatUserConfig>) => {
-		const defaultValues: FunctionSign = {
+		const defaultValues: ContractSignature = {
 			functionsColumns: ['selector', 'sign:minimal'],
 			eventsColumns: ['topicHash'],
 			errorsColumns: ['selector', 'sign:minimal'],
 			exclude: [],
 		}
 
-		config.functionSign = Object.assign(
+		config.contractSignature = Object.assign(
 			defaultValues,
-			userConfig.functionSign
+			userConfig.contractSignature
 		)
 	}
 )

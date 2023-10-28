@@ -6,7 +6,7 @@ import {
 	type ErrorFormatColumns,
 } from './types'
 
-export interface FunctionSign {
+export interface ContractSignature {
 	exclude: string[]
 	functionsColumns: FunctionFormatColumns[]
 	eventsColumns: EventsFormatColumns[]
@@ -15,10 +15,10 @@ export interface FunctionSign {
 
 declare module 'hardhat/types/config' {
 	export interface HardhatUserConfig {
-		functionSign?: DeepPartial<FunctionSign>
+		contractSignature?: DeepPartial<ContractSignature>
 	}
 
 	export interface HardhatConfig {
-		functionSign: Required<FunctionSign>
+		contractSignature: Required<ContractSignature>
 	}
 }

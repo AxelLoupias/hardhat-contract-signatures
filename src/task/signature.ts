@@ -18,7 +18,7 @@ import { type HardhatRuntimeEnvironment } from 'hardhat/types'
 const signature = scope('signature', 'test')
 
 signature
-	.task('functions', 'Get the signatures of the differents methods of a SC')
+	.task('functions', 'Displays the signatures of the smart contract functions')
 	.setAction(async (args, hre) => {
 		const { contracts, functionsColumns } = await getContractsConfig(hre)
 		const data = []
@@ -47,7 +47,7 @@ signature
 	})
 
 signature
-	.task('events', 'Get the events of the differents methods of a SC')
+	.task('events', 'Displays the signatures of the smart contract events')
 	.setAction(async (args, hre) => {
 		const { contracts, eventsColumns } = await getContractsConfig(hre)
 		const data = []
@@ -73,7 +73,7 @@ signature
 	})
 
 signature
-	.task('errors', 'Get the errors of the differents methods of a SC')
+	.task('errors', 'Displays the signatures of the smart contract errors')
 	.setAction(async (args, hre) => {
 		const { contracts, errorsColumns } = await getContractsConfig(hre)
 		const data = []
@@ -202,10 +202,10 @@ function getErrorsData(
 
 async function getContractsConfig(hre: HardhatRuntimeEnvironment) {
 	// Obtain config
-	const excludeContractsConfig = hre.config.functionSign.exclude
-	const functionsColumns = hre.config.functionSign.functionsColumns
-	const eventsColumns = hre.config.functionSign.eventsColumns
-	const errorsColumns = hre.config.functionSign.errorsColumns
+	const excludeContractsConfig = hre.config.contractSignature.exclude
+	const functionsColumns = hre.config.contractSignature.functionsColumns
+	const eventsColumns = hre.config.contractSignature.eventsColumns
+	const errorsColumns = hre.config.contractSignature.errorsColumns
 
 	// Get contracts or throw error if not compiled
 	const contractsData = await getContractsData(hre)
