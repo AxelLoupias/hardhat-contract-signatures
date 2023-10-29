@@ -22,12 +22,12 @@
 	},
 	"repository": {
 		"type": "git",
-		"url": "git+https://github.com/AxelLoupias/hardhat-plugin-signatures.git"
+		"url": "git+https://github.com/AxelLoupias/hardhat-contract-signatures.git"
 	},
 	"bugs": {
-		"url": "https://github.com/AxelLoupias/hardhat-plugin-signatures.git"
+		"url": "https://github.com/AxelLoupias/hardhat-contract-signatures.git"
 	},
-	"homepage": "https://github.com/AxelLoupias/hardhat-plugin-signatures#readme",
+	"homepage": "https://github.com/AxelLoupias/hardhat-contract-signatures#readme",
 	"keywords": [
 		"functions",
 		"errors",
