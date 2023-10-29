@@ -1,7 +1,7 @@
 {
 	"name": "hardhat-contract-signatures",
 	"version": "1.0.0",
-	"description": "",
+	"description": "Hardhat plugin to display different signatures that have the methods, events and errors of your contracts by console",
 	"main": "dist/index.js",
 	"types": "dist/index.d.ts",
 	"files": [
@@ -12,15 +12,30 @@
 	"scripts": {
 		"clean": "rimraf dist",
 		"dev": "npx tsc --watch",
-		"test": "npx hardhat test",
 		"prettier": "prettier --check \"**/*.{ts,js}\"",
 		"lint": "npx eslint . --ext js,ts;",
 		"prettier:fix": "prettier --write \"**/*.{ts,js}\"",
 		"lint:fix": "npx eslint . --ext js,ts --fix",
-		"fix": "npm run prettier:fix; npm run lint:fix"
+		"fix": "npm run prettier:fix; npm run lint:fix",
+		"build": "npx tsc",
+		"prepublish": "npm run build"
 	},
-	"keywords": [],
-	"author": "",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/AxelLoupias/hardhat-plugin-signatures.git"
+	},
+	"bugs": {
+		"url": "https://github.com/AxelLoupias/hardhat-plugin-signatures.git"
+	},
+	"homepage": "https://github.com/AxelLoupias/hardhat-plugin-signatures#readme",
+	"keywords": [
+		"functions",
+		"errors",
+		"events",
+		"tooling",
+		"selectorss"
+	],
+	"author": "Axel Loupias ",
 	"license": "ISC",
 	"devDependencies": {
 		"@nomicfoundation/hardhat-ethers": "^3.0.4",
