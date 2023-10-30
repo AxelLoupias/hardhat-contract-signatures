@@ -48,5 +48,3 @@ The plugin includes 3 tasks depending on which signature you want to obtain:
 	```
 	npx hardhat signature events
 	```
-
-The tasks throw error if the SC are not compiled.

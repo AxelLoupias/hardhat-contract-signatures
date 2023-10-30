@@ -15,7 +15,7 @@ import {
 import { type Interface } from 'ethers'
 import { type HardhatRuntimeEnvironment } from 'hardhat/types'
 
-const signature = scope('signature', 'test')
+const signature = scope('signature', 'Display different signatures that have the methods, events and errors of your contracts by console')
 
 signature
 	.task('functions', 'Displays the signatures of the smart contract functions')
@@ -208,6 +208,7 @@ async function getContractsConfig(hre: HardhatRuntimeEnvironment) {
 	const errorsColumns = hre.config.contractSignature.errorsColumns
 
 	// Get contracts or throw error if not compiled
+	await hre.run("compile")
 	const contractsData = await getContractsData(hre)
 
 	return {

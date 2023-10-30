@@ -1,6 +1,6 @@
 {
 	"name": "hardhat-contract-signatures",
-	"version": "1.0.1",
+	"version": "1.0.2",
 	"description": "Hardhat plugin to display different signatures that have the methods, events and errors of your contracts by console",
 	"main": "dist/index.js",
 	"types": "dist/index.d.ts",
@@ -53,7 +53,8 @@
 		"typescript": "^5.2.2"
 	},
 	"peerDependencies": {
-		"hardhat": "^2.18.2"
+		"hardhat": "^2.18.2",
+		"@nomicfoundation/hardhat-ethers": "^3.0.4"
 	},
 	"dependencies": {
 		"cli-table3": "^0.6.3",
