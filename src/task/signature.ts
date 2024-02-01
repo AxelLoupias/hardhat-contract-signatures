@@ -1,24 +1,31 @@
 import { scope } from 'hardhat/config'
 import '@nomicfoundation/hardhat-ethers'
 import Table, { type CellOptions } from 'cli-table3'
-import {
-	type EventsFormatColumns,
-	type FunctionFormatColumns,
-	type ErrorFormatColumns,
-} from '../types/types'
+import { type FormatColumns } from '../types/types'
 import {
 	getContractsData,
 	getNamesFormatColumns,
 	isContract,
 	excludeContracts,
 } from '../utils'
-import { type Interface } from 'ethers'
+import {
+	type Interface,
+	type NamedFragment,
+	id,
+	type FragmentType,
+} from 'ethers'
 import { type HardhatRuntimeEnvironment } from 'hardhat/types'
 
-const signature = scope('signature', 'Display different signatures that have the methods, events and errors of your contracts by console')
+const signature = scope(
+	'signature',
+	'Display different signatures that have the methods, events and errors of your contracts by console'
+)
 
 signature
-	.task('functions', 'Displays the signatures of the smart contract functions')
+	.task(
+		'functions',
+		'Displays the signatures of the smart contract functions'
+	)
 	.setAction(async (args, hre) => {
 		const { contracts, functionsColumns } = await getContractsConfig(hre)
 		const data = []
@@ -29,11 +36,12 @@ signature
 			const contractInterface = (
 				await hre.ethers.getContractFactory(contractData.name)
 			).interface
-			const functionData = getFunctionsData(
+			const functionData = getDataSignature({
 				contractInterface,
-				contractData.name,
-				functionsColumns
-			)
+				contractName: contractData.name,
+				typeAllowed: ['function'],
+				showColumns: functionsColumns,
+			})
 			if (functionData.length === 0) {
 				continue
 			}
@@ -58,11 +66,12 @@ signature
 			const contractInterface = (
 				await hre.ethers.getContractFactory(contractData.name)
 			).interface
-			const eventsData = getEventsData(
+			const eventsData = getDataSignature({
 				contractInterface,
-				contractData.name,
-				eventsColumns
-			)
+				contractName: contractData.name,
+				typeAllowed: ['event'],
+				showColumns: eventsColumns,
+			})
 			if (eventsData.length === 0) {
 				continue
 			}
@@ -84,11 +93,12 @@ signature
 			const contractInterface = (
 				await hre.ethers.getContractFactory(contractData.name)
 			).interface
-			const eventsData = getErrorsData(
+			const eventsData = getDataSignature({
 				contractInterface,
-				contractData.name,
-				errorsColumns
-			)
+				contractName: contractData.name,
+				typeAllowed: ['error'],
+				showColumns: errorsColumns,
+			})
 			if (eventsData.length === 0) {
 				continue
 			}
@@ -109,95 +119,60 @@ function drawTable(headColumns: string[], contractData: CellOptions[][]) {
 	console.log(table.toString())
 }
 
-function getFunctionsData(
-	contractInterface: Interface,
-	contractName: string,
-	showColumns: FunctionFormatColumns[]
-) {
-	const functionData: CellOptions[][] = []
+function getDataSignature({
+	contractInterface,
+	contractName,
+	typeAllowed,
+	showColumns,
+	find,
+}: {
+	contractInterface: Interface
+	contractName: string
+	typeAllowed: FragmentType[]
+	showColumns: FormatColumns[]
+	find?: string
+}) {
+	const isFinding = find !== undefined
+	const data: CellOptions[][] = []
+	const contractData = contractInterface.fragments.filter((item) =>
+		typeAllowed.includes(item.type)
+	)
 
-	const totalFunctions = contractInterface.fragments.filter(
-		(fragment) => fragment.type === 'function'
-	).length
-
-	contractInterface.forEachFunction((fnt, index) => {
-		const actions: Record<FunctionFormatColumns, () => CellOptions> = {
-			selector: () => ({ content: fnt.selector }),
+	contractData.forEach((fnt, index) => {
+		const actions: Record<FormatColumns, () => CellOptions> = {
+			topicHash: () => ({ content: id(fnt.format('sighash')) }),
+			selector: () => ({
+				content: id(fnt.format('sighash')).substring(0, 10),
+			}),
 			'sign:full': () => ({ content: fnt.format('full') }),
 			'sign:json': () => ({ content: fnt.format('json') }),
 			'sign:minimal': () => ({ content: fnt.format('minimal') }),
 			'sign:sighash': () => ({ content: fnt.format('sighash') }),
 		}
+
+		if (
+			isFinding &&
+			!actions.selector().content!.toString().includes(find)
+		) {
+			return
+		}
 		const row: CellOptions[] =
-			index === 0
-				? [{ content: contractName, rowSpan: totalFunctions }]
+			index === 0 || isFinding
+				? [
+					{
+						content: contractName,
+						rowSpan: !isFinding ? contractData.length : 0,
+					},
+				]
 				: []
 
-		row.push({ content: fnt.name })
-		row.push(...showColumns.map((column) => actions[column]()))
-		functionData.push(row)
-	})
-	return functionData
-}
-
-function getEventsData(
-	contractInterface: Interface,
-	contractName: string,
-	showColumns: EventsFormatColumns[]
-) {
-	const eventsData: CellOptions[][] = []
-
-	const totalEvents = contractInterface.fragments.filter(
-		(fragment) => fragment.type === 'event'
-	).length
-
-	contractInterface.forEachEvent((fnt, index) => {
-		const actions: Record<EventsFormatColumns, () => CellOptions> = {
-			topicHash: () => ({ content: fnt.topicHash }),
-			'sign:full': () => ({ content: fnt.format('full') }),
-			'sign:json': () => ({ content: fnt.format('json') }),
-			'sign:minimal': () => ({ content: fnt.format('minimal') }),
-			'sign:sighash': () => ({ content: fnt.format('sighash') }),
-		}
-		const row: CellOptions[] =
-			index === 0 ? [{ content: contractName, rowSpan: totalEvents }] : []
-
-		row.push({ content: fnt.name })
+		row.push({ content: (fnt as NamedFragment).name })
 		row.push(...showColumns.map((column) => actions[column]()))
 
-		eventsData.push(row)
+		data.push(row)
 	})
-	return eventsData
-}
 
-function getErrorsData(
-	contractInterface: Interface,
-	contractName: string,
-	showColumns: ErrorFormatColumns[]
-) {
-	const eventsData: CellOptions[][] = []
-
-	const totalEvents = contractInterface.fragments.filter(
-		(fragment) => fragment.type === 'error'
-	).length
-
-	contractInterface.forEachError((fnt, index) => {
-		const actions: Record<ErrorFormatColumns, () => CellOptions> = {
-			selector: () => ({ content: fnt.selector }),
-			'sign:full': () => ({ content: fnt.format('full') }),
-			'sign:json': () => ({ content: fnt.format('json') }),
-			'sign:minimal': () => ({ content: fnt.format('minimal') }),
-			'sign:sighash': () => ({ content: fnt.format('sighash') }),
-		}
-		const row: CellOptions[] =
-			index === 0 ? [{ content: contractName, rowSpan: totalEvents }] : []
-
-		row.push({ content: fnt.name })
-		row.push(...showColumns.map((column) => actions[column]()))
-
-		eventsData.push(row)
-	})
-	return eventsData
+	return data
 }
 
 async function getContractsConfig(hre: HardhatRuntimeEnvironment) {
@@ -208,7 +183,7 @@ async function getContractsConfig(hre: HardhatRuntimeEnvironment) {
 	const errorsColumns = hre.config.contractSignature.errorsColumns
 
 	// Get contracts or throw error if not compiled
-	await hre.run("compile")
+	await hre.run('compile')
 	const contractsData = await getContractsData(hre)
 
 	return {

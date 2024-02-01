@@ -10,6 +10,8 @@ export type ErrorFormatColumns = 'selector' | FormatFragments
 
 export type EventsFormatColumns = 'topicHash' | FormatFragments
 
+export type AllFormats = 'selector' | 'topicHash' | FormatFragments
+
 export type FormatColumns =
 	| FunctionFormatColumns
 	| EventsFormatColumns
