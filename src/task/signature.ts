@@ -15,6 +15,7 @@ import {
 	type FragmentType,
 } from 'ethers'
 import { type HardhatRuntimeEnvironment } from 'hardhat/types'
+import { DEFAULT_WIDTH_COLS } from '../consts'
 
 const signature = scope(
 	'signature',
@@ -108,10 +109,26 @@ signature
 		drawTable(['errorName', ...getNamesFormatColumns(errorsColumns)], data)
 	})
 
+
+function calculateColumnWidths(maxWidth: number, headColumnCount: number): number[] {
+	const widthUsed = DEFAULT_WIDTH_COLS + DEFAULT_WIDTH_COLS + headColumnCount + 3;
+	const remainingWidth = maxWidth - widthUsed;
+	const columnWidth = Math.floor(remainingWidth / (headColumnCount));
+	const colWidths = new Array(headColumnCount).fill(columnWidth);
+	colWidths[0] += remainingWidth % (headColumnCount);
+
+	return colWidths;
+}
+
 function drawTable(headColumns: string[], contractData: CellOptions[][]) {
+	const maxWidth = process.stdout.columns ?? 400;
+
 	const table = new Table({
 		head: ['contract', ...headColumns],
 		style: { head: ['green'] },
+		wordWrap: true,
+		wrapOnWordBoundary: false,
+		colWidths: [DEFAULT_WIDTH_COLS, DEFAULT_WIDTH_COLS, ...calculateColumnWidths(maxWidth, headColumns.length - 1)]
 	})
 	table.push()
 	contractData.forEach((item) => table.push(item))
