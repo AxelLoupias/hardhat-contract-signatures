@@ -10,3 +10,5 @@ export const COLUMNS_NAMES: Record<FormatColumns, string> = {
 	'sign:json': 'json',
 	topicHash: 'topicHash',
 }
+
+export const DEFAULT_WIDTH_COLS = 30

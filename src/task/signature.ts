@@ -109,6 +109,38 @@ signature
 		drawTable(['errorName', ...getNamesFormatColumns(errorsColumns)], data)
 	})
 
+signature
+	.task('find', 'Find the signature by selector')
+	.addPositionalParam('selector')
+	.setAction(async (args, hre) => {
+		const { selector } = args
+		const { contracts, functionsColumns } = await getContractsConfig(hre)
+		const data = []
+		for (const contractData of contracts) {
+			if (!(await isContract(hre, contractData.name))) {
+				continue
+			}
+			const contractInterface = (
+				await hre.ethers.getContractFactory(contractData.name)
+			).interface
+			const functionData = getDataSignature({
+				contractInterface,
+				contractName: contractData.name,
+				find: selector,
+				typeAllowed: ['error', 'event', 'function'],
+				showColumns: ['selector', 'sign:minimal'],
+			})
+			if (functionData.length === 0) {
+				continue
+			}
+			data.push(...functionData)
+		}
+
+		drawTable(
+			['methodName', ...getNamesFormatColumns(functionsColumns)],
+			data
+		)
+	})
 
 function calculateColumnWidths(maxWidth: number, headColumnCount: number): number[] {
 	const widthUsed = DEFAULT_WIDTH_COLS + DEFAULT_WIDTH_COLS + headColumnCount + 3;
