@@ -1,16 +1,16 @@
 type FormatFragments =
+	| 'selector'
 	| 'sign:minimal'
 	| 'sign:sighash'
 	| 'sign:full'
 	| 'sign:json'
+	| 'type'
 
-export type FunctionFormatColumns = 'selector' | FormatFragments
+export type FunctionFormatColumns = FormatFragments
 
-export type ErrorFormatColumns = 'selector' | FormatFragments
+export type ErrorFormatColumns = FormatFragments
 
 export type EventsFormatColumns = 'topicHash' | FormatFragments
-
-export type AllFormats = 'selector' | 'topicHash' | FormatFragments
 
 export type FormatColumns =
 	| FunctionFormatColumns

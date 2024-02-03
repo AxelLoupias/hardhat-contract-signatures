@@ -111,10 +111,10 @@ signature
 
 signature
 	.task('find', 'Find the signature by selector')
-	.addPositionalParam('selector')
+	.addPositionalParam('find')
 	.setAction(async (args, hre) => {
-		const { selector } = args
-		const { contracts, functionsColumns } = await getContractsConfig(hre)
+		const { find } = args
+		const { contracts, findColumns } = await getContractsConfig(hre)
 		const data = []
 		for (const contractData of contracts) {
 			if (!(await isContract(hre, contractData.name))) {
@@ -126,9 +126,9 @@ signature
 			const functionData = getDataSignature({
 				contractInterface,
 				contractName: contractData.name,
-				find: selector,
+				find,
 				typeAllowed: ['error', 'event', 'function'],
-				showColumns: ['selector', 'sign:minimal'],
+				showColumns: findColumns,
 			})
 			if (functionData.length === 0) {
 				continue
@@ -136,31 +136,36 @@ signature
 			data.push(...functionData)
 		}
 
-		drawTable(
-			['methodName', ...getNamesFormatColumns(functionsColumns)],
-			data
-		)
+		drawTable(['name', ...getNamesFormatColumns(findColumns)], data)
 	})
 
-function calculateColumnWidths(maxWidth: number, headColumnCount: number): number[] {
-	const widthUsed = DEFAULT_WIDTH_COLS + DEFAULT_WIDTH_COLS + headColumnCount + 3;
-	const remainingWidth = maxWidth - widthUsed;
-	const columnWidth = Math.floor(remainingWidth / (headColumnCount));
-	const colWidths = new Array(headColumnCount).fill(columnWidth);
-	colWidths[0] += remainingWidth % (headColumnCount);
+function calculateColumnWidths(
+	maxWidth: number,
+	headColumnCount: number
+): number[] {
+	const widthUsed =
+		DEFAULT_WIDTH_COLS + DEFAULT_WIDTH_COLS + headColumnCount + 3
+	const remainingWidth = maxWidth - widthUsed
+	const columnWidth = Math.floor(remainingWidth / headColumnCount)
+	const colWidths = new Array(headColumnCount).fill(columnWidth)
+	colWidths[0] += remainingWidth % headColumnCount
 
-	return colWidths;
+	return colWidths
 }
 
 function drawTable(headColumns: string[], contractData: CellOptions[][]) {
-	const maxWidth = process.stdout.columns ?? 400;
+	const maxWidth = process.stdout.columns ?? 400
 
 	const table = new Table({
 		head: ['contract', ...headColumns],
 		style: { head: ['green'] },
 		wordWrap: true,
 		wrapOnWordBoundary: false,
-		colWidths: [DEFAULT_WIDTH_COLS, DEFAULT_WIDTH_COLS, ...calculateColumnWidths(maxWidth, headColumns.length - 1)]
+		colWidths: [
+			DEFAULT_WIDTH_COLS,
+			DEFAULT_WIDTH_COLS,
+			...calculateColumnWidths(maxWidth, headColumns.length - 1),
+		],
 	})
 	table.push()
 	contractData.forEach((item) => table.push(item))
@@ -197,22 +202,24 @@ function getDataSignature({
 			'sign:json': () => ({ content: fnt.format('json') }),
 			'sign:minimal': () => ({ content: fnt.format('minimal') }),
 			'sign:sighash': () => ({ content: fnt.format('sighash') }),
+			type: () => ({ content: fnt.type }),
 		}
 
 		if (
 			isFinding &&
-			!actions.selector().content!.toString().includes(find)
+			!actions.selector().content!.toString().includes(find) &&
+			(fnt as NamedFragment).name !== find
 		) {
 			return
 		}
 		const row: CellOptions[] =
 			index === 0 || isFinding
 				? [
-					{
-						content: contractName,
-						rowSpan: !isFinding ? contractData.length : 0,
-					},
-				]
+						{
+							content: contractName,
+							rowSpan: !isFinding ? contractData.length : 0,
+						},
+					]
 				: []
 
 		row.push({ content: (fnt as NamedFragment).name })
@@ -230,8 +237,8 @@ async function getContractsConfig(hre: HardhatRuntimeEnvironment) {
 	const functionsColumns = hre.config.contractSignature.functionsColumns
 	const eventsColumns = hre.config.contractSignature.eventsColumns
 	const errorsColumns = hre.config.contractSignature.errorsColumns
+	const findColumns = hre.config.contractSignature.findColumns
 
-	// Get contracts or throw error if not compiled
 	await hre.run('compile')
 	const contractsData = await getContractsData(hre)
 
@@ -240,5 +247,6 @@ async function getContractsConfig(hre: HardhatRuntimeEnvironment) {
 		functionsColumns,
 		eventsColumns,
 		errorsColumns,
+		findColumns,
 	}
 }

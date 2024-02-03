@@ -8,6 +8,7 @@ extendConfig(
 			functionsColumns: ['selector', 'sign:minimal'],
 			eventsColumns: ['topicHash'],
 			errorsColumns: ['selector', 'sign:minimal'],
+			findColumns: ['type', 'sign:minimal'],
 			exclude: [],
 		}
 
