@@ -24,4 +24,5 @@ export type DeepPartial<T> = {
 export interface ContractArtifactData {
 	name: string
 	path: string
+	qualifiedName: string
 }

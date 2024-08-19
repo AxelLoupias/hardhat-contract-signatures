@@ -1,13 +1,10 @@
 {
 	"name": "hardhat-contract-signatures",
-	"version": "1.1.0",
+	"version": "1.1.1",
 	"description": "Hardhat plugin to display different signatures that have the methods, events and errors of your contracts by console",
-	"main": "dist/index.js",
-	"types": "dist/index.d.ts",
+	"main": "src/index.ts",
 	"files": [
-		"dist/",
-		"src/",
-		"README.md"
+		"src/"
 	],
 	"scripts": {
 		"clean": "rimraf dist",

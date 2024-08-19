@@ -9,7 +9,6 @@
 		"strict": true,
 		"rootDirs": [
 			"./src",
-			"./test"
 		],
 		"esModuleInterop": true
 	},
@@ -18,7 +17,6 @@
 		"node_modules"
 	],
 	"include": [
-		"./test",
 		"./src"
 	]
 }
