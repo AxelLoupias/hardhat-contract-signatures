@@ -31,11 +31,11 @@ signature
 		const { contracts, functionsColumns } = await getContractsConfig(hre)
 		const data = []
 		for (const contractData of contracts) {
-			if (!(await isContract(hre, contractData.name))) {
+			if (!(await isContract(hre, contractData.qualifiedName))) {
 				continue
 			}
 			const contractInterface = (
-				await hre.ethers.getContractFactory(contractData.name)
+				await hre.ethers.getContractFactory(contractData.qualifiedName)
 			).interface
 			const functionData = getDataSignature({
 				contractInterface,
@@ -61,11 +61,11 @@ signature
 		const { contracts, eventsColumns } = await getContractsConfig(hre)
 		const data = []
 		for (const contractData of contracts) {
-			if (!(await isContract(hre, contractData.name))) {
+			if (!(await isContract(hre, contractData.qualifiedName))) {
 				continue
 			}
 			const contractInterface = (
-				await hre.ethers.getContractFactory(contractData.name)
+				await hre.ethers.getContractFactory(contractData.qualifiedName)
 			).interface
 			const eventsData = getDataSignature({
 				contractInterface,
@@ -88,11 +88,11 @@ signature
 		const { contracts, errorsColumns } = await getContractsConfig(hre)
 		const data = []
 		for (const contractData of contracts) {
-			if (!(await isContract(hre, contractData.name))) {
+			if (!(await isContract(hre, contractData.qualifiedName))) {
 				continue
 			}
 			const contractInterface = (
-				await hre.ethers.getContractFactory(contractData.name)
+				await hre.ethers.getContractFactory(contractData.qualifiedName)
 			).interface
 			const eventsData = getDataSignature({
 				contractInterface,
@@ -117,11 +117,11 @@ signature
 		const { contracts, findColumns } = await getContractsConfig(hre)
 		const data = []
 		for (const contractData of contracts) {
-			if (!(await isContract(hre, contractData.name))) {
+			if (!(await isContract(hre, contractData.qualifiedName))) {
 				continue
 			}
 			const contractInterface = (
-				await hre.ethers.getContractFactory(contractData.name)
+				await hre.ethers.getContractFactory(contractData.qualifiedName)
 			).interface
 			const functionData = getDataSignature({
 				contractInterface,
@@ -215,11 +215,11 @@ function getDataSignature({
 		const row: CellOptions[] =
 			index === 0 || isFinding
 				? [
-						{
-							content: contractName,
-							rowSpan: !isFinding ? contractData.length : 0,
-						},
-					]
+					{
+						content: contractName,
+						rowSpan: !isFinding ? contractData.length : 0,
+					},
+				]
 				: []
 
 		row.push({ content: (fnt as NamedFragment).name })

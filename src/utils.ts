@@ -18,7 +18,7 @@ export async function getContractsData(
 
 	return contracts.map((contract) => {
 		const [path, name] = contract.split(':')
-		return { path, name }
+		return { path, name, qualifiedName: contract }
 	})
 }
 
