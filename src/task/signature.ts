@@ -215,11 +215,11 @@ function getDataSignature({
 		const row: CellOptions[] =
 			index === 0 || isFinding
 				? [
-					{
-						content: contractName,
-						rowSpan: !isFinding ? contractData.length : 0,
-					},
-				]
+						{
+							content: contractName,
+							rowSpan: !isFinding ? contractData.length : 0,
+						},
+					]
 				: []
 
 		row.push({ content: (fnt as NamedFragment).name })

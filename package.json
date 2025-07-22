@@ -33,9 +33,9 @@
 		"errors",
 		"events",
 		"tooling",
-		"selectorss"
+		"selectors"
 	],
-	"author": "Axel Loupias ",
+	"author": "Axel Loupias",
 	"license": "ISC",
 	"devDependencies": {
 		"@nomicfoundation/hardhat-ethers": "^3.0.4",
