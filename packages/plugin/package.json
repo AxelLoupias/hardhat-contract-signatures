@@ -1,6 +1,6 @@
 {
   "name": "hardhat-contract-signatures",
-  "version": "2.0.0-beta.1",
+  "version": "2.0.0-beta.2",
   "description": "Hardhat plugin to display different signatures that have the methods, events and errors of your contracts by console",
   "author": "Axel Loupias",
   "license": "MIT",
