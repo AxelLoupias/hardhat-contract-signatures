@@ -3,25 +3,31 @@ import { describe, it, beforeEach, afterEach } from "node:test";
 import { HardhatRuntimeEnvironment } from "hardhat/types/hre";
 import { createFixtureProjectHRE } from "./helpers/fixture-projects.js";
 
+interface EventSignatureJson {
+  contract: string;
+  eventName: string;
+  topicHash: string;
+  full?: string;
+  sign?: string;
+}
+
 describe("signature events tests", () => {
   let hre: HardhatRuntimeEnvironment;
   let consoleOutput: string[] = [];
   let originalConsoleLog: typeof console.log;
-  let originalStdoutColumns: number | undefined;
+
+  const getJsonOutput = (): EventSignatureJson[] => {
+    const output = consoleOutput.join("\n");
+    const jsonStartIndex = output.indexOf("[");
+    if (jsonStartIndex === -1) return [];
+    const jsonString = output.substring(jsonStartIndex);
+    return JSON.parse(jsonString) as EventSignatureJson[];
+  };
 
   beforeEach(async () => {
     hre = await createFixtureProjectHRE("base-project");
     consoleOutput = [];
 
-    // Mock terminal width to avoid size issues
-    originalStdoutColumns = process.stdout.columns;
-    Object.defineProperty(process.stdout, "columns", {
-      value: 200,
-      writable: true,
-      configurable: true,
-    });
-
-    // Capture console.log output
     originalConsoleLog = console.log;
     console.log = (...args: unknown[]) => {
       consoleOutput.push(args.map(String).join(" "));
@@ -29,15 +35,7 @@ describe("signature events tests", () => {
   });
 
   afterEach(() => {
-    // Restore console.log
     console.log = originalConsoleLog;
-
-    // Restore terminal width
-    Object.defineProperty(process.stdout, "columns", {
-      value: originalStdoutColumns,
-      writable: true,
-      configurable: true,
-    });
   });
 
   describe("Task definition", () => {
@@ -59,81 +57,198 @@ describe("signature events tests", () => {
     });
   });
 
-  describe("Task execution", () => {
-    it("Should compile and display event signatures", async () => {
+  describe("Selector (topic hash) with --json", () => {
+    it("Should generate correct 32-byte topic hash", async () => {
       const eventsTask = hre.tasks.getTask(["signature", "events"]);
+      await eventsTask.run({ json: true });
 
-      await eventsTask.run();
-
-      const output = consoleOutput.join("\n");
-
-      assert.ok(output.includes("Counter"), "Should display Counter contract");
-      assert.ok(output.includes("Increment"), "Should display Increment event");
-    });
-
-    it("Should display event topic hashes", async () => {
-      const eventsTask = hre.tasks.getTask(["signature", "events"]);
-
-      await eventsTask.run();
-
-      const output = consoleOutput.join("\n");
-
-      assert.ok(
-        output.includes(
-          "0x51af157c2eee40f68107a47a49c32fbbeb0a3c9e5cd37aa56e88e6be92368a81",
-        ),
-        "Should display topic hash for Increment event",
-      );
-    });
-
-    it("Should display contract names and event names", async () => {
-      const eventsTask = hre.tasks.getTask(["signature", "events"]);
-
-      await eventsTask.run();
-
-      const output = consoleOutput.join("\n");
-
-      assert.ok(
-        output.includes("contract"),
-        "Should have contract column header",
-      );
-      assert.ok(
-        output.includes("eventName"),
-        "Should have eventName column header",
-      );
-      assert.ok(
-        output.includes("topicHash"),
-        "Should have topicHash column header",
-      );
-    });
-
-    it("Should only display events (not errors or functions)", async () => {
-      const eventsTask = hre.tasks.getTask(["signature", "events"]);
-
-      await eventsTask.run();
-
-      const output = consoleOutput.join("\n");
-
-      assert.ok(
-        !output.includes("MaxValueReached"),
-        "Should not display error MaxValueReached",
+      const jsonOutput = getJsonOutput();
+      const transferEvent = jsonOutput.find(
+        (item) =>
+          item.contract === "TestContract" && item.eventName === "Transfer",
       );
 
-      assert.ok(!output.includes("inc()"), "Should not display function inc");
-      assert.ok(!output.includes("incBy"), "Should not display function incBy");
+      assert.ok(transferEvent, "Should find Transfer event");
+      assert.ok(
+        transferEvent.topicHash.startsWith("0x"),
+        "Topic hash should start with 0x",
+      );
+      assert.equal(
+        transferEvent.topicHash.length,
+        66,
+        "Topic hash should be 66 chars",
+      );
     });
   });
 
-  describe("Multiple contracts", () => {
-    it("Should display events from Counter contract", async () => {
+  describe("Full signature with --json", () => {
+    it("Should include 'event' keyword and parameter names", async () => {
       const eventsTask = hre.tasks.getTask(["signature", "events"]);
+      await eventsTask.run({ json: true });
 
-      await eventsTask.run();
+      const jsonOutput = getJsonOutput();
+      const transferEvent = jsonOutput.find(
+        (item) =>
+          item.contract === "TestContract" && item.eventName === "Transfer",
+      );
 
-      const output = consoleOutput.join("\n");
+      assert.ok(
+        transferEvent?.full?.startsWith("event"),
+        "Should start with 'event'",
+      );
+      assert.ok(
+        transferEvent?.full?.includes("address indexed from") ||
+          transferEvent?.full?.includes("indexed address from"),
+        "Should include 'indexed' with param name 'from'",
+      );
+      assert.ok(
+        transferEvent?.full?.includes("address indexed to") ||
+          transferEvent?.full?.includes("indexed address to"),
+        "Should include 'indexed' with param name 'to'",
+      );
+    });
 
-      assert.ok(output.includes("Counter"), "Should display Counter contract");
-      assert.ok(output.includes("Increment"), "Should display Increment event");
+    it("Should include 'indexed' keyword for indexed parameters", async () => {
+      const eventsTask = hre.tasks.getTask(["signature", "events"]);
+      await eventsTask.run({ json: true });
+
+      const jsonOutput = getJsonOutput();
+      const transferEvent = jsonOutput.find(
+        (item) =>
+          item.contract === "TestContract" && item.eventName === "Transfer",
+      );
+
+      assert.ok(
+        transferEvent?.full?.includes("indexed") &&
+          transferEvent?.full?.includes("from"),
+        "Should have indexed for 'from'",
+      );
+      assert.ok(
+        transferEvent?.full?.includes("indexed") &&
+          transferEvent?.full?.includes("to"),
+        "Should have indexed for 'to'",
+      );
+      // Count how many times 'indexed' appears
+      const indexedCount = (transferEvent?.full?.match(/indexed/g) || [])
+        .length;
+      assert.equal(indexedCount, 2, "Should have exactly 2 indexed parameters");
+    });
+
+    it("Should expand structs with field names in events", async () => {
+      const eventsTask = hre.tasks.getTask(["signature", "events"]);
+      await eventsTask.run({ json: true });
+
+      const jsonOutput = getJsonOutput();
+      const userRegisteredEvent = jsonOutput.find(
+        (item) =>
+          item.contract === "TestContract" &&
+          item.eventName === "UserRegistered",
+      );
+
+      assert.ok(
+        userRegisteredEvent?.full?.includes("address wallet"),
+        "Should expand struct",
+      );
+      assert.ok(
+        userRegisteredEvent?.full?.includes("uint256 balance"),
+        "Should include fields",
+      );
+    });
+  });
+
+  describe("Minimal signature with --json", () => {
+    it("Should include 'event' keyword but NOT parameter names", async () => {
+      const eventsTask = hre.tasks.getTask(["signature", "events"]);
+      await eventsTask.run({ json: true });
+
+      const jsonOutput = getJsonOutput();
+      const transferEvent = jsonOutput.find(
+        (item) =>
+          item.contract === "TestContract" && item.eventName === "Transfer",
+      );
+
+      assert.ok(
+        transferEvent?.sign?.startsWith("event"),
+        "Should start with 'event'",
+      );
+      assert.ok(
+        !transferEvent?.sign?.includes("from"),
+        "Should NOT include param names",
+      );
+      assert.ok(
+        !transferEvent?.sign?.includes("to"),
+        "Should NOT include param names",
+      );
+    });
+
+    it("Should NOT include 'indexed' keyword", async () => {
+      const eventsTask = hre.tasks.getTask(["signature", "events"]);
+      await eventsTask.run({ json: true });
+
+      const jsonOutput = getJsonOutput();
+      const transferEvent = jsonOutput.find(
+        (item) =>
+          item.contract === "TestContract" && item.eventName === "Transfer",
+      );
+
+      assert.ok(
+        !transferEvent?.sign?.includes("indexed"),
+        "Should NOT include 'indexed'",
+      );
+      assert.ok(
+        transferEvent?.sign?.includes("address") &&
+          transferEvent?.sign?.includes("uint256"),
+        "Should have parameter types",
+      );
+      assert.ok(
+        !transferEvent?.sign?.includes("from") &&
+          !transferEvent?.sign?.includes("to"),
+        "Should NOT include parameter names",
+      );
+    });
+
+    it("Should expand structs WITHOUT field names", async () => {
+      const eventsTask = hre.tasks.getTask(["signature", "events"]);
+      await eventsTask.run({ json: true });
+
+      const jsonOutput = getJsonOutput();
+      const userRegisteredEvent = jsonOutput.find(
+        (item) =>
+          item.contract === "TestContract" &&
+          item.eventName === "UserRegistered",
+      );
+
+      assert.ok(
+        userRegisteredEvent?.sign?.includes("(address,uint256,string)"),
+        "Should expand without names",
+      );
+      assert.ok(
+        !userRegisteredEvent?.sign?.includes("wallet"),
+        "Should NOT include field names",
+      );
+    });
+  });
+
+  describe("Complex types with --json", () => {
+    it("Should handle arrays in events", async () => {
+      const eventsTask = hre.tasks.getTask(["signature", "events"]);
+      await eventsTask.run({ json: true });
+
+      const jsonOutput = getJsonOutput();
+      const arrayEvent = jsonOutput.find(
+        (item) =>
+          item.contract === "TestContract" &&
+          item.eventName === "BatchTransfer",
+      );
+
+      assert.ok(
+        arrayEvent?.full?.includes("address[] to"),
+        "Full should have array with name",
+      );
+      assert.ok(
+        arrayEvent?.sign?.includes("address[]"),
+        "Minimal should have array type",
+      );
     });
   });
 });

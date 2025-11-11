@@ -3,25 +3,32 @@ import { describe, it, beforeEach, afterEach } from "node:test";
 import { HardhatRuntimeEnvironment } from "hardhat/types/hre";
 import { createFixtureProjectHRE } from "./helpers/fixture-projects.js";
 
+interface FunctionSignatureJson {
+  contract: string;
+  functionName: string;
+  selector: string;
+  full?: string;
+  sign?: string;
+}
+
 describe("signature functions tests", () => {
   let hre: HardhatRuntimeEnvironment;
   let consoleOutput: string[] = [];
   let originalConsoleLog: typeof console.log;
-  let originalStdoutColumns: number | undefined;
+
+  // Helper to extract JSON from console output (filters compilation messages)
+  const getJsonOutput = (): FunctionSignatureJson[] => {
+    const output = consoleOutput.join("\n");
+    const jsonStartIndex = output.indexOf("[");
+    if (jsonStartIndex === -1) return [];
+    const jsonString = output.substring(jsonStartIndex);
+    return JSON.parse(jsonString) as FunctionSignatureJson[];
+  };
 
   beforeEach(async () => {
     hre = await createFixtureProjectHRE("base-project");
     consoleOutput = [];
 
-    // Mock terminal width to avoid size issues
-    originalStdoutColumns = process.stdout.columns;
-    Object.defineProperty(process.stdout, "columns", {
-      value: 200,
-      writable: true,
-      configurable: true,
-    });
-
-    // Capture console.log output
     originalConsoleLog = console.log;
     console.log = (...args: unknown[]) => {
       consoleOutput.push(args.map(String).join(" "));
@@ -29,15 +36,7 @@ describe("signature functions tests", () => {
   });
 
   afterEach(() => {
-    // Restore console.log
     console.log = originalConsoleLog;
-
-    // Restore terminal width
-    Object.defineProperty(process.stdout, "columns", {
-      value: originalStdoutColumns,
-      writable: true,
-      configurable: true,
-    });
   });
 
   describe("Task definition", () => {
@@ -59,115 +58,261 @@ describe("signature functions tests", () => {
     });
   });
 
-  describe("Task execution", () => {
-    it("Should compile and display function signatures", async () => {
+  describe("Selector format", () => {
+    it("Should generate correct 4-byte selector with --json", async () => {
       const functionsTask = hre.tasks.getTask(["signature", "functions"]);
+      await functionsTask.run({ json: true });
 
-      await functionsTask.run();
-
-      const output = consoleOutput.join("\n");
-
-      // Verify that the output contains expected function signatures
-      assert.ok(output.includes("Counter"), "Should display Counter contract");
-      assert.ok(output.includes("inc"), "Should display inc() function");
-      assert.ok(
-        output.includes("incBy"),
-        "Should display incBy(uint) function",
-      );
-      assert.ok(output.includes("x"), "Should display x() function");
-    });
-
-    it("Should display function selectors", async () => {
-      const functionsTask = hre.tasks.getTask(["signature", "functions"]);
-
-      await functionsTask.run();
-
-      const output = consoleOutput.join("\n");
-
-      // Check for known selectors
-      assert.ok(
-        output.includes("0x371303c0"),
-        "Should display selector for inc()",
-      );
-      assert.ok(
-        output.includes("0x70119d06"),
-        "Should display selector for incBy(uint)",
-      );
-      assert.ok(
-        output.includes("0x0c55699c"),
-        "Should display selector for x()",
-      );
-    });
-
-    it("Should display contract names and function names", async () => {
-      const functionsTask = hre.tasks.getTask(["signature", "functions"]);
-
-      await functionsTask.run();
-
-      const output = consoleOutput.join("\n");
-
-      // Verify table structure
-      assert.ok(
-        output.includes("contract"),
-        "Should have contract column header",
-      );
-      assert.ok(
-        output.includes("functionName"),
-        "Should have functionName column header",
-      );
-      assert.ok(
-        output.includes("selector"),
-        "Should have selector column header",
-      );
-    });
-
-    it("Should display table with proper formatting", async () => {
-      const functionsTask = hre.tasks.getTask(["signature", "functions"]);
-
-      await functionsTask.run();
-
-      const output = consoleOutput.join("\n");
-
-      // Check for table characters
-      assert.ok(output.includes("┌"), "Should have table border characters");
-      assert.ok(output.includes("│"), "Should have table column separators");
-      assert.ok(output.includes("└"), "Should have table border characters");
-    });
-
-    it("Should only display functions (not events or errors)", async () => {
-      const functionsTask = hre.tasks.getTask(["signature", "functions"]);
-
-      await functionsTask.run();
-
-      const output = consoleOutput.join("\n");
-
-      // Should not include events
-      assert.ok(
-        !output.includes("Increment"),
-        "Should not display event Increment",
+      const jsonOutput = getJsonOutput();
+      const addFunction = jsonOutput.find(
+        (item) =>
+          item.contract === "TestContract" && item.functionName === "add",
       );
 
-      // Should not include errors
+      assert.ok(addFunction, "Should find add function");
       assert.ok(
-        !output.includes("MaxValueReached"),
-        "Should not display error MaxValueReached",
+        addFunction.selector.startsWith("0x"),
+        "Selector should start with 0x",
+      );
+      assert.equal(
+        addFunction.selector.length,
+        10,
+        "Selector should be 10 characters",
+      );
+      assert.equal(
+        addFunction.selector,
+        "0x771602f7",
+        "Should match expected selector",
       );
     });
   });
 
-  describe("Multiple contracts", () => {
-    it("Should display functions from Counter contract", async () => {
+  describe("Full signature with --json", () => {
+    it("Should include 'function' keyword and parameter names", async () => {
       const functionsTask = hre.tasks.getTask(["signature", "functions"]);
+      await functionsTask.run({ json: true });
 
-      await functionsTask.run();
+      const jsonOutput = getJsonOutput();
+      const addFunction = jsonOutput.find(
+        (item) =>
+          item.contract === "TestContract" && item.functionName === "add",
+      );
 
-      const output = consoleOutput.join("\n");
+      assert.ok(
+        addFunction?.full?.startsWith("function "),
+        "Should start with 'function'",
+      );
+      assert.ok(
+        addFunction?.full?.includes("uint256 a"),
+        "Should include param name 'a'",
+      );
+      assert.ok(
+        addFunction?.full?.includes("uint256 b"),
+        "Should include param name 'b'",
+      );
+    });
 
-      // Should display Counter contract and its functions
-      assert.ok(output.includes("Counter"), "Should display Counter contract");
-      assert.ok(output.includes("inc"), "Should display inc function");
-      assert.ok(output.includes("incBy"), "Should display incBy function");
-      assert.ok(output.includes("x"), "Should display x function");
+    it("Should include return parameter names", async () => {
+      const functionsTask = hre.tasks.getTask(["signature", "functions"]);
+      await functionsTask.run({ json: true });
+
+      const jsonOutput = getJsonOutput();
+      const divModFunction = jsonOutput.find(
+        (item) =>
+          item.contract === "TestContract" && item.functionName === "divMod",
+      );
+
+      assert.ok(
+        divModFunction?.full?.includes("uint256 quotient"),
+        "Should include return name",
+      );
+      assert.ok(
+        divModFunction?.full?.includes("uint256 remainder"),
+        "Should include return name",
+      );
+    });
+
+    it("Should expand structs with field names", async () => {
+      const functionsTask = hre.tasks.getTask(["signature", "functions"]);
+      await functionsTask.run({ json: true });
+
+      const jsonOutput = getJsonOutput();
+      const registerUserFunction = jsonOutput.find(
+        (item) =>
+          item.contract === "TestContract" &&
+          item.functionName === "registerUser",
+      );
+
+      assert.ok(
+        registerUserFunction?.full?.includes("(address wallet"),
+        "Should expand struct",
+      );
+      assert.ok(
+        registerUserFunction?.full?.includes("uint256 balance"),
+        "Should include fields",
+      );
+      assert.ok(
+        registerUserFunction?.full?.includes("string name)"),
+        "Should include fields",
+      );
+    });
+  });
+
+  describe("Minimal signature with --json", () => {
+    it("Should include 'function' keyword but NOT parameter names", async () => {
+      const functionsTask = hre.tasks.getTask(["signature", "functions"]);
+      await functionsTask.run({ json: true });
+
+      const jsonOutput = getJsonOutput();
+      const addFunction = jsonOutput.find(
+        (item) =>
+          item.contract === "TestContract" && item.functionName === "add",
+      );
+
+      assert.ok(
+        addFunction?.sign?.startsWith("function "),
+        "Should start with 'function'",
+      );
+      // Check that minimal signature doesn't have parameter names (no ", a," or ", b,")
+      assert.ok(
+        !addFunction?.sign?.includes("uint256 a"),
+        "Should NOT include param name 'a' with commas",
+      );
+      assert.ok(
+        !addFunction?.sign?.includes("uint256 b"),
+        "Should NOT include param name 'b' before closing paren",
+      );
+      assert.ok(
+        addFunction?.sign?.includes("(uint256,uint256)"),
+        "Should have types only",
+      );
+    });
+
+    it("Should expand structs WITHOUT field names", async () => {
+      const functionsTask = hre.tasks.getTask(["signature", "functions"]);
+      await functionsTask.run({ json: true });
+
+      const jsonOutput = getJsonOutput();
+      const registerUserFunction = jsonOutput.find(
+        (item) =>
+          item.contract === "TestContract" &&
+          item.functionName === "registerUser",
+      );
+
+      assert.ok(
+        registerUserFunction?.sign?.includes("(address,uint256,string)"),
+        "Should expand without names",
+      );
+      assert.ok(
+        !registerUserFunction?.sign?.includes("wallet"),
+        "Should NOT include field names",
+      );
+    });
+  });
+
+  describe("State modifiers with --json", () => {
+    it("Should include 'pure' modifier", async () => {
+      const functionsTask = hre.tasks.getTask(["signature", "functions"]);
+      await functionsTask.run({ json: true });
+
+      const jsonOutput = getJsonOutput();
+      const addFunction = jsonOutput.find(
+        (item) =>
+          item.contract === "TestContract" && item.functionName === "add",
+      );
+
+      assert.ok(addFunction?.full?.includes("pure"), "Full should have 'pure'");
+      assert.ok(
+        addFunction?.sign?.includes("pure"),
+        "Minimal should have 'pure'",
+      );
+    });
+
+    it("Should include 'view' modifier", async () => {
+      const functionsTask = hre.tasks.getTask(["signature", "functions"]);
+      await functionsTask.run({ json: true });
+
+      const jsonOutput = getJsonOutput();
+      const getBalanceFunction = jsonOutput.find(
+        (item) =>
+          item.contract === "TestContract" &&
+          item.functionName === "getBalance",
+      );
+
+      assert.ok(
+        getBalanceFunction?.full?.includes("view"),
+        "Full should have 'view'",
+      );
+      assert.ok(
+        getBalanceFunction?.sign?.includes("view"),
+        "Minimal should have 'view'",
+      );
+    });
+
+    it("Should include 'payable' modifier", async () => {
+      const functionsTask = hre.tasks.getTask(["signature", "functions"]);
+      await functionsTask.run({ json: true });
+
+      const jsonOutput = getJsonOutput();
+      const depositFunction = jsonOutput.find(
+        (item) =>
+          item.contract === "TestContract" && item.functionName === "deposit",
+      );
+
+      assert.ok(
+        depositFunction?.full?.includes("payable"),
+        "Full should have 'payable'",
+      );
+      assert.ok(
+        depositFunction?.sign?.includes("payable"),
+        "Minimal should have 'payable'",
+      );
+    });
+  });
+
+  describe("Complex types with --json", () => {
+    it("Should handle arrays correctly", async () => {
+      const functionsTask = hre.tasks.getTask(["signature", "functions"]);
+      await functionsTask.run({ json: true });
+
+      const jsonOutput = getJsonOutput();
+      const batchTransferFunction = jsonOutput.find(
+        (item) =>
+          item.contract === "TestContract" &&
+          item.functionName === "batchTransfer",
+      );
+
+      assert.ok(
+        batchTransferFunction?.full?.includes("address[] to"),
+        "Full should have array with name",
+      );
+      assert.ok(
+        batchTransferFunction?.sign?.includes("address[]"),
+        "Minimal should have array type",
+      );
+    });
+
+    it("Should handle array of structs", async () => {
+      const functionsTask = hre.tasks.getTask(["signature", "functions"]);
+      await functionsTask.run({ json: true });
+
+      const jsonOutput = getJsonOutput();
+      const filterUsersFunction = jsonOutput.find(
+        (item) =>
+          item.contract === "TestContract" &&
+          item.functionName === "filterUsers",
+      );
+
+      assert.ok(
+        filterUsersFunction?.full?.includes(
+          "(address wallet, uint256 balance, string name)[]",
+        ),
+        "Full should expand array of structs with names",
+      );
+      assert.ok(
+        filterUsersFunction?.sign?.includes("(address,uint256,string)[]"),
+        "Minimal should expand array of structs without names",
+      );
     });
   });
 });

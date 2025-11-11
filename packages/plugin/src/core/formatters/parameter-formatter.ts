@@ -71,7 +71,8 @@ export function formatEventParam(
     typeStr = param.type;
   }
 
-  const indexedStr = param.indexed ? " indexed" : "";
+  // Only include 'indexed' keyword when includeName is true (full signature)
+  const indexedStr = includeName && param.indexed ? " indexed" : "";
   const nameStr = includeName && param.name ? ` ${param.name}` : "";
   return `${typeStr}${indexedStr}${nameStr}`;
 }

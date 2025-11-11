@@ -10,6 +10,12 @@ const config: HardhatUserConfig = {
       },
     ],
   },
+  contractSignature: {
+    functionsColumns: ["selector", "sign:full", "sign:minimal"],
+    eventsColumns: ["topicHash", "sign:full", "sign:minimal"],
+    errorsColumns: ["selector", "sign:full", "sign:minimal"],
+    findColumns: ["type", "selector", "sign:minimal"],
+  },
 };
 
 export default config;

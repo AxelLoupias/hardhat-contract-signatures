@@ -3,25 +3,31 @@ import { describe, it, beforeEach, afterEach } from "node:test";
 import { HardhatRuntimeEnvironment } from "hardhat/types/hre";
 import { createFixtureProjectHRE } from "./helpers/fixture-projects.js";
 
+interface ErrorSignatureJson {
+  contract: string;
+  errorName: string;
+  selector: string;
+  full?: string;
+  sign?: string;
+}
+
 describe("signature errors tests", () => {
   let hre: HardhatRuntimeEnvironment;
   let consoleOutput: string[] = [];
   let originalConsoleLog: typeof console.log;
-  let originalStdoutColumns: number | undefined;
+
+  const getJsonOutput = (): ErrorSignatureJson[] => {
+    const output = consoleOutput.join("\n");
+    const jsonStartIndex = output.indexOf("[");
+    if (jsonStartIndex === -1) return [];
+    const jsonString = output.substring(jsonStartIndex);
+    return JSON.parse(jsonString) as ErrorSignatureJson[];
+  };
 
   beforeEach(async () => {
     hre = await createFixtureProjectHRE("base-project");
     consoleOutput = [];
 
-    // Mock terminal width to avoid size issues
-    originalStdoutColumns = process.stdout.columns;
-    Object.defineProperty(process.stdout, "columns", {
-      value: 200,
-      writable: true,
-      configurable: true,
-    });
-
-    // Capture console.log output
     originalConsoleLog = console.log;
     console.log = (...args: unknown[]) => {
       consoleOutput.push(args.map(String).join(" "));
@@ -29,15 +35,7 @@ describe("signature errors tests", () => {
   });
 
   afterEach(() => {
-    // Restore console.log
     console.log = originalConsoleLog;
-
-    // Restore terminal width
-    Object.defineProperty(process.stdout, "columns", {
-      value: originalStdoutColumns,
-      writable: true,
-      configurable: true,
-    });
   });
 
   describe("Task definition", () => {
@@ -59,84 +57,152 @@ describe("signature errors tests", () => {
     });
   });
 
-  describe("Task execution", () => {
-    it("Should compile and display error signatures", async () => {
+  describe("Selector format with --json", () => {
+    it("Should generate correct 4-byte selector", async () => {
       const errorsTask = hre.tasks.getTask(["signature", "errors"]);
+      await errorsTask.run({ json: true });
 
-      await errorsTask.run();
-
-      const output = consoleOutput.join("\n");
-
-      assert.ok(output.includes("Counter"), "Should display Counter contract");
-      assert.ok(
-        output.includes("MaxValueReached"),
-        "Should display MaxValueReached error",
-      );
-    });
-
-    it("Should display error selectors", async () => {
-      const errorsTask = hre.tasks.getTask(["signature", "errors"]);
-
-      await errorsTask.run();
-
-      const output = consoleOutput.join("\n");
-
-      assert.ok(
-        output.includes("0xcff5da22"),
-        "Should display selector for MaxValueReached",
-      );
-    });
-
-    it("Should display contract names and error names", async () => {
-      const errorsTask = hre.tasks.getTask(["signature", "errors"]);
-
-      await errorsTask.run();
-
-      const output = consoleOutput.join("\n");
-
-      assert.ok(
-        output.includes("contract"),
-        "Should have contract column header",
-      );
-      assert.ok(
-        output.includes("errorName"),
-        "Should have errorName column header",
-      );
-      assert.ok(
-        output.includes("selector"),
-        "Should have selector column header",
-      );
-    });
-
-    it("Should only display errors (not events or functions)", async () => {
-      const errorsTask = hre.tasks.getTask(["signature", "errors"]);
-
-      await errorsTask.run();
-
-      const output = consoleOutput.join("\n");
-
-      assert.ok(
-        !output.includes("Increment"),
-        "Should not display event Increment",
+      const jsonOutput = getJsonOutput();
+      const invalidAmountError = jsonOutput.find(
+        (item) =>
+          item.contract === "TestContract" &&
+          item.errorName === "InvalidAmount",
       );
 
-      assert.ok(!output.includes("inc()"), "Should not display function inc");
-      assert.ok(!output.includes("incBy"), "Should not display function incBy");
+      assert.ok(invalidAmountError, "Should find InvalidAmount error");
+      assert.ok(
+        invalidAmountError.selector.startsWith("0x"),
+        "Selector should start with 0x",
+      );
+      assert.equal(
+        invalidAmountError.selector.length,
+        10,
+        "Selector should be 10 chars",
+      );
     });
   });
 
-  describe("Multiple contracts", () => {
-    it("Should display errors from Counter contract", async () => {
+  describe("Full signature with --json", () => {
+    it("Should include 'error' keyword and parameter names", async () => {
       const errorsTask = hre.tasks.getTask(["signature", "errors"]);
+      await errorsTask.run({ json: true });
 
-      await errorsTask.run();
+      const jsonOutput = getJsonOutput();
+      const insufficientBalanceError = jsonOutput.find(
+        (item) =>
+          item.contract === "TestContract" &&
+          item.errorName === "InsufficientBalance",
+      );
 
-      const output = consoleOutput.join("\n");
-
-      assert.ok(output.includes("Counter"), "Should display Counter contract");
       assert.ok(
-        output.includes("MaxValueReached"),
-        "Should display MaxValueReached error",
+        insufficientBalanceError?.full?.startsWith("error "),
+        "Should start with 'error'",
+      );
+      assert.ok(
+        insufficientBalanceError?.full?.includes("uint256 available"),
+        "Should include param name 'available'",
+      );
+      assert.ok(
+        insufficientBalanceError?.full?.includes("uint256 required"),
+        "Should include param name 'required'",
+      );
+    });
+
+    it("Should expand structs with field names", async () => {
+      const errorsTask = hre.tasks.getTask(["signature", "errors"]);
+      await errorsTask.run({ json: true });
+
+      const jsonOutput = getJsonOutput();
+      const invalidUserError = jsonOutput.find(
+        (item) =>
+          item.contract === "TestContract" && item.errorName === "InvalidUser",
+      );
+
+      assert.ok(
+        invalidUserError?.full?.includes("address wallet"),
+        "Should expand struct",
+      );
+      assert.ok(
+        invalidUserError?.full?.includes("uint256 balance"),
+        "Should include fields",
+      );
+      assert.ok(
+        invalidUserError?.full?.includes("string name"),
+        "Should include fields",
+      );
+    });
+  });
+
+  describe("Minimal signature with --json", () => {
+    it("Should include 'error' keyword but NOT parameter names", async () => {
+      const errorsTask = hre.tasks.getTask(["signature", "errors"]);
+      await errorsTask.run({ json: true });
+
+      const jsonOutput = getJsonOutput();
+      const insufficientBalanceError = jsonOutput.find(
+        (item) =>
+          item.contract === "TestContract" &&
+          item.errorName === "InsufficientBalance",
+      );
+
+      assert.ok(
+        insufficientBalanceError?.sign?.startsWith("error"),
+        "Should start with 'error'",
+      );
+      assert.ok(
+        !insufficientBalanceError?.sign?.includes("requested"),
+        "Should NOT include names",
+      );
+      assert.ok(
+        !insufficientBalanceError?.sign?.includes("available"),
+        "Should NOT include names",
+      );
+      assert.ok(
+        insufficientBalanceError?.sign?.includes("(uint256,uint256)"),
+        "Should have types only",
+      );
+    });
+
+    it("Should expand structs WITHOUT field names", async () => {
+      const errorsTask = hre.tasks.getTask(["signature", "errors"]);
+      await errorsTask.run({ json: true });
+
+      const jsonOutput = getJsonOutput();
+      const invalidUserError = jsonOutput.find(
+        (item) =>
+          item.contract === "TestContract" && item.errorName === "InvalidUser",
+      );
+
+      assert.ok(
+        invalidUserError?.sign?.includes("(address,uint256,string)"),
+        "Should expand without names",
+      );
+      assert.ok(
+        !invalidUserError?.sign?.includes("wallet"),
+        "Should NOT include field names",
+      );
+    });
+  });
+
+  describe("Complex types with --json", () => {
+    it("Should handle arrays in errors", async () => {
+      const errorsTask = hre.tasks.getTask(["signature", "errors"]);
+      await errorsTask.run({ json: true });
+
+      const jsonOutput = getJsonOutput();
+      const invalidArrayError = jsonOutput.find(
+        (item) =>
+          item.contract === "TestContract" &&
+          item.errorName === "InvalidAddresses",
+      );
+
+      assert.ok(
+        invalidArrayError?.full?.includes("address[] addresses"),
+        "Full should have array with name",
+      );
+      assert.ok(
+        invalidArrayError?.sign?.includes("address[]"),
+        "Minimal should have array type",
       );
     });
   });

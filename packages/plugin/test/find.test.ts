@@ -3,23 +3,31 @@ import { describe, it, beforeEach, afterEach } from "node:test";
 import { HardhatRuntimeEnvironment } from "hardhat/types/hre";
 import { createFixtureProjectHRE } from "./helpers/fixture-projects.js";
 
+interface FindResultJson {
+  contract: string;
+  name: string;
+  type: "function" | "event" | "error";
+  selector?: string;
+  sign?: string;
+  full?: string;
+}
+
 describe("signature find tests", () => {
   let hre: HardhatRuntimeEnvironment;
   let consoleOutput: string[] = [];
   let originalConsoleLog: typeof console.log;
-  let originalStdoutColumns: number | undefined;
+
+  const getJsonOutput = (): FindResultJson[] => {
+    const output = consoleOutput.join("\n");
+    const jsonStartIndex = output.indexOf("[");
+    if (jsonStartIndex === -1) return [];
+    const jsonString = output.substring(jsonStartIndex);
+    return JSON.parse(jsonString) as FindResultJson[];
+  };
 
   beforeEach(async () => {
     hre = await createFixtureProjectHRE("base-project");
     consoleOutput = [];
-
-    // Mock terminal width to avoid size issues
-    originalStdoutColumns = process.stdout.columns;
-    Object.defineProperty(process.stdout, "columns", {
-      value: 200,
-      writable: true,
-      configurable: true,
-    });
 
     // Capture console.log output
     originalConsoleLog = console.log;
@@ -31,13 +39,6 @@ describe("signature find tests", () => {
   afterEach(() => {
     // Restore console.log
     console.log = originalConsoleLog;
-
-    // Restore terminal width
-    Object.defineProperty(process.stdout, "columns", {
-      value: originalStdoutColumns,
-      writable: true,
-      configurable: true,
-    });
   });
 
   describe("Task definition", () => {
@@ -61,136 +62,135 @@ describe("signature find tests", () => {
 
   describe("Task execution", () => {
     describe("Search by function name", () => {
-      it("Should find function by exact name", async () => {
+      it("Should find function by exact name with JSON output", async () => {
         const findTask = hre.tasks.getTask(["signature", "find"]);
 
-        await findTask.run({ find: "inc" });
+        await findTask.run({ find: "add", json: true });
 
-        const output = consoleOutput.join("\n");
-
-        assert.ok(
-          output.includes("Counter"),
-          "Should display Counter contract",
+        const jsonOutput = getJsonOutput();
+        const addFunction = jsonOutput.find(
+          (item) => item.contract === "TestContract" && item.name === "add",
         );
-        assert.ok(output.includes("inc"), "Should display inc function");
-        assert.ok(output.includes("function"), "Should display function type");
+
+        assert.ok(addFunction, "Should find add function");
+        assert.equal(addFunction?.type, "function", "Should be a function");
         assert.ok(
-          output.includes("inc()"),
-          "Should display function signature",
+          addFunction?.sign?.includes("add(uint256,uint256)"),
+          "Should include function signature",
         );
       });
 
-      it("Should find function by partial name", async () => {
+      it("Should find function by partial name with JSON output", async () => {
         const findTask = hre.tasks.getTask(["signature", "find"]);
 
-        await findTask.run({ find: "incBy" });
+        await findTask.run({ find: "transfer", json: true });
 
-        const output = consoleOutput.join("\n");
-
-        assert.ok(
-          output.includes("Counter"),
-          "Should display Counter contract",
+        const jsonOutput = getJsonOutput();
+        const transferFunction = jsonOutput.find(
+          (item) =>
+            item.contract === "TestContract" && item.name === "transfer",
         );
-        assert.ok(output.includes("incBy"), "Should display incBy function");
-        assert.ok(output.includes("function"), "Should display function type");
+
+        assert.ok(transferFunction, "Should find transfer function");
+        assert.equal(
+          transferFunction?.type,
+          "function",
+          "Should be a function",
+        );
       });
     });
 
     describe("Search by function selector", () => {
-      it("Should find function by selector", async () => {
+      it("Should find function by selector with JSON output", async () => {
         const findTask = hre.tasks.getTask(["signature", "find"]);
 
-        await findTask.run({ find: "0x371303c0" });
+        // add(uint256,uint256) selector
+        await findTask.run({ find: "0x771602f7", json: true });
 
-        const output = consoleOutput.join("\n");
-
-        assert.ok(
-          output.includes("Counter"),
-          "Should display Counter contract",
+        const jsonOutput = getJsonOutput();
+        const addFunction = jsonOutput.find(
+          (item) => item.contract === "TestContract" && item.name === "add",
         );
-        assert.ok(output.includes("inc"), "Should display inc function");
-        assert.ok(output.includes("function"), "Should display function type");
+
+        assert.ok(addFunction, "Should find add function");
         assert.ok(
-          output.includes("inc()"),
-          "Should display function signature",
+          addFunction?.selector?.includes("0x771602f7"),
+          "Should include selector",
+        );
+        assert.ok(
+          addFunction?.sign?.includes("add(uint256,uint256)"),
+          "Should include function signature",
         );
       });
 
-      it("Should find function by another selector", async () => {
+      it("Should find function by another selector with JSON output", async () => {
         const findTask = hre.tasks.getTask(["signature", "find"]);
 
-        await findTask.run({ find: "0x70119d06" });
+        // transfer(address,uint256) selector
+        await findTask.run({ find: "0xa9059cbb", json: true });
 
-        const output = consoleOutput.join("\n");
+        const jsonOutput = getJsonOutput();
+        const transferFunction = jsonOutput.find(
+          (item) =>
+            item.contract === "TestContract" && item.name === "transfer",
+        );
 
-        assert.ok(output.includes("incBy"), "Should display incBy function");
+        assert.ok(transferFunction, "Should find transfer function");
+        assert.ok(
+          transferFunction?.selector?.includes("0xa9059cbb"),
+          "Should include selector",
+        );
       });
     });
 
     describe("Search by event name", () => {
-      it("Should find event by name", async () => {
+      it("Should find event by name with JSON output", async () => {
         const findTask = hre.tasks.getTask(["signature", "find"]);
 
-        await findTask.run({ find: "Increment" });
+        await findTask.run({ find: "Transfer", json: true });
 
-        const output = consoleOutput.join("\n");
+        const jsonOutput = getJsonOutput();
+        const transferEvent = jsonOutput.find(
+          (item) =>
+            item.contract === "TestContract" && item.name === "Transfer",
+        );
 
+        assert.ok(transferEvent, "Should find Transfer event");
+        assert.equal(transferEvent?.type, "event", "Should be an event");
         assert.ok(
-          output.includes("Counter"),
-          "Should display Counter contract",
-        );
-        assert.ok(
-          output.includes("Increment"),
-          "Should display Increment event",
-        );
-        assert.ok(output.includes("event"), "Should display event type");
-        assert.ok(
-          output.includes("Increment(uint256)"),
-          "Should display event signature",
+          transferEvent?.sign?.includes("Transfer") &&
+            transferEvent?.sign?.includes("address") &&
+            transferEvent?.sign?.includes("uint256"),
+          "Should include event signature with types",
         );
       });
     });
 
     describe("Search by error selector", () => {
-      it("Should find error by selector", async () => {
+      it("Should find error by selector with JSON output", async () => {
         const findTask = hre.tasks.getTask(["signature", "find"]);
 
-        await findTask.run({ find: "0xcff5da22" });
+        // InsufficientBalance(uint256,uint256) selector
+        await findTask.run({ find: "0xcf479181", json: true });
 
-        const output = consoleOutput.join("\n");
+        const jsonOutput = getJsonOutput();
+        const insufficientError = jsonOutput.find(
+          (item) =>
+            item.contract === "TestContract" &&
+            item.name === "InsufficientBalance",
+        );
 
+        assert.ok(insufficientError, "Should find InsufficientBalance error");
+        assert.equal(insufficientError?.type, "error", "Should be an error");
         assert.ok(
-          output.includes("Counter"),
-          "Should display Counter contract",
+          insufficientError?.selector?.includes("0xcf479181"),
+          "Should include selector",
         );
         assert.ok(
-          output.includes("MaxValueReached"),
-          "Should display MaxValueReached error",
+          insufficientError?.sign?.includes("InsufficientBalance") &&
+            insufficientError?.sign?.includes("uint256"),
+          "Should include error signature with types",
         );
-        assert.ok(output.includes("error"), "Should display error type");
-        assert.ok(
-          output.includes("MaxValueReached(uint256,uint256)"),
-          "Should display error signature",
-        );
-      });
-    });
-
-    describe("Table structure", () => {
-      it("Should display correct column headers", async () => {
-        const findTask = hre.tasks.getTask(["signature", "find"]);
-
-        await findTask.run({ find: "inc" });
-
-        const output = consoleOutput.join("\n");
-
-        // Verify table structure
-        assert.ok(
-          output.includes("contract"),
-          "Should have contract column header",
-        );
-        assert.ok(output.includes("name"), "Should have name column header");
-        assert.ok(output.includes("type"), "Should have type column header");
-        assert.ok(output.includes("sign"), "Should have sign column header");
       });
     });
 
@@ -198,24 +198,10 @@ describe("signature find tests", () => {
       it("Should handle search with no results", async () => {
         const findTask = hre.tasks.getTask(["signature", "find"]);
 
-        await findTask.run({ find: "nonExistentFunction" });
+        await findTask.run({ find: "nonExistentFunction", json: true });
 
-        const output = consoleOutput.join("\n");
-
-        assert.ok(
-          output.includes("contract"),
-          "Should still display table headers",
-        );
-        const lines = output.split("\n");
-        const dataLines = lines.filter(
-          (line) =>
-            line.includes("│") &&
-            !line.includes("contract") &&
-            !line.includes("┌") &&
-            !line.includes("└") &&
-            !line.includes("├"),
-        );
-        assert.equal(dataLines.length, 0, "Should have no data rows");
+        const jsonOutput = getJsonOutput();
+        assert.equal(jsonOutput.length, 0, "Should have no results");
       });
     });
   });

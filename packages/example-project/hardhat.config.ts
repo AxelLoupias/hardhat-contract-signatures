@@ -5,7 +5,8 @@ export default {
   plugins: [hardhatContractSignatures],
   solidity: "0.8.29",
   contractSignature: {
-    functionsColumns: ["selector"],
-    eventsColumns: ["sign:minimal"],
+    functionsColumns: ["selector", "sign:full", "sign:minimal"],
+    eventsColumns: ["selector", "sign:full", "sign:minimal"],
+    errorsColumns: ["selector", "sign:full", "sign:minimal"],
   },
 } satisfies HardhatUserConfig;
