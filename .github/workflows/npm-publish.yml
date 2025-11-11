@@ -12,11 +12,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+      - uses: pnpm/action-setup@v2
+        with:
+          version: latest
       - uses: actions/setup-node@v3
         with:
           node-version: 16
           registry-url: https://registry.npmjs.org/
-      - run: npm ci
-      - run: npm publish
+          cache: "pnpm"
+      - run: pnpm install --frozen-lockfile
+      - run: cd packages/plugin && pnpm publish --tag ${{ github.event.release.prerelease && 'canary' || 'latest' }}
         env:
           NODE_AUTH_TOKEN: ${{secrets.npm_token}}
