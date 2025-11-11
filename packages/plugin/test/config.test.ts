@@ -49,7 +49,6 @@ describe("Contract Signature Plugin config", () => {
         assert.equal(validationErrors.length, 0);
       });
     });
-
   });
 
   describe("Config resolution", () => {

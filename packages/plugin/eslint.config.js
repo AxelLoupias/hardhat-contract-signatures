@@ -8,6 +8,9 @@ import path from "node:path";
 
 export default defineConfig(
   {
+    ignores: ["**/artifacts/**", "**/node_modules/**"],
+  },
+  {
     languageOptions: {
       ecmaVersion: 2022,
       parser: tseslint.parser,
@@ -85,7 +88,6 @@ export default defineConfig(
   {
     // This is a set of more opinionated rules. Feel free to adapt to your style.
     files: ["src/**/*.ts", "test/**/*.ts", "integration-tests/**/*.ts"],
-    ignores: ["test/**/fixture-projects/**"],
     rules: {
       "import/order": "error",
     },
