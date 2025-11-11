@@ -19,6 +19,7 @@ export async function executeSignatureTask(
   const contractsConfig = await getContractsConfig(hre);
   const columns = config.getColumns(contractsConfig);
   const data: CellOptions[][] = [];
+  const isJsonOutput = (taskArguments as { json?: boolean })?.json ?? false;
 
   for (const contractData of contractsConfig.contracts) {
     if (!(await isContract(hre, contractData.qualifiedName))) {
@@ -37,6 +38,7 @@ export async function executeSignatureTask(
       typeAllowed: config.fragmentType,
       showColumns: columns,
       find,
+      forceContractColumn: isJsonOutput,
     });
 
     if (signatureData.length === 0) {
@@ -46,7 +48,33 @@ export async function executeSignatureTask(
     data.push(...signatureData);
   }
 
-  drawTable([config.columnName, ...getNamesFormatColumns(columns)], data);
+  if (isJsonOutput) {
+    const headers = [
+      "contract",
+      config.columnName,
+      ...getNamesFormatColumns(columns),
+    ];
+
+    const jsonData = data.map((row) => {
+      const obj: Record<string, string> = {};
+
+      row.forEach((cell, index) => {
+        const header = headers[index];
+        if (header) {
+          obj[header] =
+            typeof cell === "object" && "content" in cell
+              ? String(cell.content)
+              : String(cell);
+        }
+      });
+
+      return obj;
+    });
+
+    console.log(JSON.stringify(jsonData, null, 2));
+  } else {
+    drawTable([config.columnName, ...getNamesFormatColumns(columns)], data);
+  }
 }
 
 export const TASK_CONFIGS: Record<string, SignatureTaskConfig> = {

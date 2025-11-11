@@ -21,6 +21,16 @@ jobs:
           registry-url: https://registry.npmjs.org/
           cache: "pnpm"
       - run: pnpm install --frozen-lockfile
-      - run: cd packages/plugin && pnpm publish --no-git-checks
+      - name: Determine npm tag
+        id: npm-tag
+        run: |
+          cd packages/plugin
+          VERSION=$(node -p "require('./package.json').version")
+          if [[ "$VERSION" == *"-"* ]]; then
+            echo "tag=beta" >> $GITHUB_OUTPUT
+          else
+            echo "tag=latest" >> $GITHUB_OUTPUT
+          fi
+      - run: cd packages/plugin && pnpm publish --no-git-checks --tag ${{ steps.npm-tag.outputs.tag }}
         env:
           NODE_AUTH_TOKEN: ${{secrets.npm_token}}
