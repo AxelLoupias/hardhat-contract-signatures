@@ -8,12 +8,7 @@ import {
 	isContract,
 	excludeContracts,
 } from '../utils'
-import {
-	type Interface,
-	type NamedFragment,
-	id,
-	type FragmentType,
-} from 'ethers'
+import { Interface, type NamedFragment, id, type FragmentType } from 'ethers'
 import { type HardhatRuntimeEnvironment } from 'hardhat/types'
 import { DEFAULT_WIDTH_COLS } from '../consts'
 
@@ -34,9 +29,10 @@ signature
 			if (!(await isContract(hre, contractData.qualifiedName))) {
 				continue
 			}
-			const contractInterface = (
-				await hre.ethers.getContractFactory(contractData.qualifiedName)
-			).interface
+			const artifact = await hre.artifacts.readArtifact(
+				contractData.qualifiedName
+			)
+			const contractInterface = new Interface(artifact.abi)
 			const functionData = getDataSignature({
 				contractInterface,
 				contractName: contractData.name,
@@ -64,9 +60,10 @@ signature
 			if (!(await isContract(hre, contractData.qualifiedName))) {
 				continue
 			}
-			const contractInterface = (
-				await hre.ethers.getContractFactory(contractData.qualifiedName)
-			).interface
+			const artifact = await hre.artifacts.readArtifact(
+				contractData.qualifiedName
+			)
+			const contractInterface = new Interface(artifact.abi)
 			const eventsData = getDataSignature({
 				contractInterface,
 				contractName: contractData.name,
@@ -91,9 +88,10 @@ signature
 			if (!(await isContract(hre, contractData.qualifiedName))) {
 				continue
 			}
-			const contractInterface = (
-				await hre.ethers.getContractFactory(contractData.qualifiedName)
-			).interface
+			const artifact = await hre.artifacts.readArtifact(
+				contractData.qualifiedName
+			)
+			const contractInterface = new Interface(artifact.abi)
 			const eventsData = getDataSignature({
 				contractInterface,
 				contractName: contractData.name,
@@ -120,9 +118,10 @@ signature
 			if (!(await isContract(hre, contractData.qualifiedName))) {
 				continue
 			}
-			const contractInterface = (
-				await hre.ethers.getContractFactory(contractData.qualifiedName)
-			).interface
+			const artifact = await hre.artifacts.readArtifact(
+				contractData.qualifiedName
+			)
+			const contractInterface = new Interface(artifact.abi)
 			const functionData = getDataSignature({
 				contractInterface,
 				contractName: contractData.name,
@@ -215,11 +214,11 @@ function getDataSignature({
 		const row: CellOptions[] =
 			index === 0 || isFinding
 				? [
-					{
-						content: contractName,
-						rowSpan: !isFinding ? contractData.length : 0,
-					},
-				]
+						{
+							content: contractName,
+							rowSpan: !isFinding ? contractData.length : 0,
+						},
+					]
 				: []
 
 		row.push({ content: (fnt as NamedFragment).name })
